@@ -4,6 +4,9 @@
 // Copyright (c) 2016 Carl Gorringe (carl.gorringe.org)
 // 4/22/2016
 //
+// Modified Version 2025 James Crowley (judgejc.net)
+// https://github.com/judgejc/ft-demos
+//
 // Displays random dots on the Flaschen Taschen.
 // https://noisebridge.net/wiki/Flaschen_Taschen
 //

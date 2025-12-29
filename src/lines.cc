@@ -5,6 +5,11 @@
 // https://github.com/cgorringe/ft-demos
 // 5/2/2016
 //
+// Modified Version 2025 James Crowley (judgejc.net)
+// https://github.com/judgejc/ft-demos
+//
+// 30/12/2025 - Update help message to display new defaults for output geometry.
+//
 // Draws lines that bounce off the walls and smoothly transition between colors.
 //
 // Based on my Lines! Screensaver App:
@@ -108,9 +113,10 @@ int opt_skip_max = SKIP_MAX;
 int usage(const char *progname) {
 
     fprintf(stderr, "Lines (c) 2016 Carl Gorringe (carl.gorringe.org)\n");
+    fprintf(stderr, "Modified Version 2025 James Crowley (judgejc.net)\n");
     fprintf(stderr, "Usage: %s [options] {one|two|four} \n", progname);
     fprintf(stderr, "Options:\n"
-        "\t-g <W>x<H>[+<X>+<Y>] : Output geometry. (default 45x35+0+0)\n"
+        "\t-g <W>x<H>[+<X>+<Y>] : Output geometry. (default 64x64+0+0)\n"
         "\t-l <layer>     : Layer 0-15. (default 3)\n"
         "\t-t <timeout>   : Timeout exits after given seconds. (default 24hrs)\n"
         "\t-h <host>      : Flaschen-Taschen display hostname. (FT_DISPLAY)\n"

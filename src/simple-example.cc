@@ -18,8 +18,8 @@
 
 #include <stdio.h>
 
-#define DISPLAY_WIDTH  25
-#define DISPLAY_HEIGHT 20
+#define DISPLAY_WIDTH  64
+#define DISPLAY_HEIGHT 64
 
 int main(int argc, char *argv[]) {
     const char *hostname = NULL;   // Will use default if not set otherwise.

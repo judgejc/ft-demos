@@ -89,9 +89,10 @@ int opt_demo = kDemoScroll;
 int usage(const char *progname) {
 
     fprintf(stderr, "midi (c) 2016-2018 Carl Gorringe (carl.gorringe.org)\n");
+    fprintf(stderr, "Modified Version 2025 James Crowley (judgejc.net)\n");
     fprintf(stderr, "Usage: cat /dev/midi | %s [options] {scroll|across|boxes}\n", progname);
     fprintf(stderr, "Options:\n"
-        "\t-g <W>x<H>[+<X>+<Y>] : Output geometry. (default 45x35+0+0)\n"
+        "\t-g <W>x<H>[+<X>+<Y>] : Output geometry. (default 64x64+0+0)\n"
         "\t-l <layer>     : Layer 0-15. (default 1)\n"
         "\t-t <timeout>   : Timeout exits after given seconds. (default 24hrs)\n"
         "\t-h <host>      : Flaschen-Taschen display hostname. (FT_DISPLAY)\n"

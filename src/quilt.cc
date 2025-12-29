@@ -4,6 +4,11 @@
 // Copyright (c) 2016 Carl Gorringe (carl.gorringe.org)
 // 4/22/2016
 //
+// Modified Version 2025 James Crowley (judgejc.net)
+// https://github.com/judgejc/ft-demos
+//
+// 30/12/2025 - Update help message to display new defaults for output geometry.
+//
 // Displays animated quilt pattern on the Flaschen Taschen.
 // https://noisebridge.net/wiki/Flaschen_Taschen
 //
@@ -76,9 +81,10 @@ int opt_bg_R=1, opt_bg_G=1, opt_bg_B=1;
 int usage(const char *progname) {
 
     fprintf(stderr, "Quilt (c) 2016 Carl Gorringe (carl.gorringe.org)\n");
+    fprintf(stderr, "Modified Version 2025 James Crowley (judgejc.net)\n");
     fprintf(stderr, "Usage: %s [options]\n", progname);
     fprintf(stderr, "Options:\n"
-        "\t-g <W>x<H>[+<X>+<Y>] : Output geometry. (default 45x35+0+0)\n"
+        "\t-g <W>x<H>[+<X>+<Y>] : Output geometry. (default 64x64+0+0)\n"
         "\t-l <layer>     : Layer 0-15. (default 1)\n"
         "\t-t <timeout>   : Timeout exits after given seconds. (default 24hrs)\n"
         "\t-h <host>      : Flaschen-Taschen display hostname. (FT_DISPLAY)\n"
