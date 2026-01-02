@@ -9,6 +9,10 @@
 // https://github.com/judgejc/ft-demos
 //
 // 30/12/2025 - Update help message to display new defaults for output geometry.
+// 31/12/2025 - Implemented a fade routine which can be optionally enabled on a
+// specified layer at the start or end of the demo to ease scene transitions.
+// 01/01/2026 - Included utility extensions for Flaschen Taschen demos to enable
+// simple logging functionality (ft-utils.cc/h).
 //
 // Clears the Flaschen Taschen canvas.
 //
@@ -44,6 +48,7 @@
 //
 
 #include "udp-flaschen-taschen.h"
+#include "ft-logger.h"
 
 #include <getopt.h>
 #include <stdio.h>
@@ -72,6 +77,19 @@ bool opt_all = false;
 bool opt_fill = false;
 int opt_r=0, opt_g=0, opt_b=0;
 
+// fade function vars
+struct timespec ts_fadestart;
+struct timespec ts_fadeend;
+struct timespec ts_currenttime;
+struct timespec ts_elapsed;
+double opt_fadein=0, opt_fadeout=0; //default fade 0s
+double new_r=0, new_g=0, new_b=0;
+double fadeprogress;
+double elapsedtime;
+
+// create logger instance
+Logger logger("logs/ft-black.log");
+
 int usage(const char *progname) {
 
     fprintf(stderr, "Black (c) 2016 Carl Gorringe (carl.gorringe.org)\n");
@@ -84,6 +102,8 @@ int usage(const char *progname) {
         "\t-h <host>      : Flaschen-Taschen display hostname. (FT_DISPLAY)\n"
         "\t-b             : Black out with color (1,1,1)\n"
         "\t-c <RRGGBB>    : Fill with color as hex\n"
+        "\t-x <fadein>    : Fade in demo over given seconds. (default 0s)\n"
+        "\t-y <fadeout>   : Fade out demo over given seconds. (default 0s)\n"
         "\t all           : Clear ALL layers\n"
     );
     return 1;
@@ -93,7 +113,7 @@ int cmdLine(int argc, char *argv[]) {
 
     // command line options
     int opt;
-    while ((opt = getopt(argc, argv, "?l:t:g:h:bc:")) != -1) {
+    while ((opt = getopt(argc, argv, "?l:t:g:h:bc:x:y:")) != -1) {
         switch (opt) {
         case '?':  // help
             return usage(argv[0]);
@@ -129,6 +149,18 @@ int cmdLine(int argc, char *argv[]) {
             }
             opt_fill = true;
             break;
+        case 'x':  // fade in
+            if (sscanf(optarg, "%lf", &opt_fadein) != 1 || opt_fadein < 0.0f) {
+                fprintf(stderr, "Invalid fade in '%s'\n", optarg);
+                return usage(argv[0]);
+            }
+            break;
+        case 'y':  // fade out
+            if (sscanf(optarg, "%lf", &opt_fadeout) != 1 || opt_fadeout < 0.0f) {
+                fprintf(stderr, "Invalid fade out '%s'\n", optarg);
+                return usage(argv[0]);
+            }
+            break;
         default:
             usage(argv[0]);
         }
@@ -145,31 +177,67 @@ int cmdLine(int argc, char *argv[]) {
 
 // ------------------------------------------------------------------------------------------
 
+// Calculates difference between two timespecs
+struct timespec timespec_diff(struct timespec currenttime, struct timespec starttime) {
+    
+    // Declare time constants
+    constexpr long max_msec = 1000;
+    constexpr long max_usec = 1000*max_msec;
+    constexpr long max_nsec = 1000*max_usec;
+    
+    // Calculate timespec difference
+    struct timespec result;    
+    result.tv_sec  = currenttime.tv_sec  - starttime.tv_sec;
+    result.tv_nsec = currenttime.tv_nsec - starttime.tv_nsec;
+
+    // Fix negative nanoseconds result
+    if (result.tv_nsec < 0) {
+        --result.tv_sec;
+        result.tv_nsec += max_nsec;
+    }
+    return result;
+}
+
 int main(int argc, char *argv[]) {
 
     // parse command line
     if (int e = cmdLine(argc, argv)) { return e; }
 
+    logger.log(INFO, "Starting ft-black demo");
+
     // Open socket and create our canvas.
     const int socket = OpenFlaschenTaschenSocket(opt_hostname);
     UDPFlaschenTaschen canvas(socket, opt_width, opt_height);
+    logger.log(DEBUG, "Created new UDPFlaschenTaschen canvas: " + 
+        std::to_string(opt_width) + "x" + std::to_string(opt_height) +
+        " on host " + (opt_hostname ? std::string(opt_hostname) : "default"));
 
     // color, black, or clear
     if (opt_fill) {
         canvas.Fill(Color(opt_r, opt_g, opt_b));
+        logger.log(INFO, "Filling layer " + std::to_string(opt_layer) + 
+            " with color RGB(" + std::to_string(opt_r) + "," +
+            std::to_string(opt_g) + "," + std::to_string(opt_b) + ")"
+        );
     }
     else if (opt_black) {
         canvas.Fill(Color(1, 1, 1));
+        logger.log(INFO, "Filling layer " + std::to_string(opt_layer) + 
+            " with black RGB(1,1,1)"
+        );
     }
     else {
         canvas.Clear();
+        logger.log(INFO, "Clearing layer " + std::to_string(opt_layer));
     }
 
     if (opt_all) {
         printf("clear all layers\n");
+        logger.log(INFO, "Clearing all layers");
     }
     else {
         printf("clear layer %d\n", opt_layer);
+        logger.log(INFO, "Clearing layer " + std::to_string(opt_layer));
     }
 
     time_t starttime = time(NULL);
@@ -191,5 +259,6 @@ int main(int argc, char *argv[]) {
 
     } while ( difftime(time(NULL), starttime) <= opt_timeout );
 
+    logger.log(INFO, "Exiting ft-black demo");
     return 0;
 }
