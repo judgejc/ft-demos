@@ -49,6 +49,7 @@
 
 #include "udp-flaschen-taschen.h"
 #include "ft-logger.h"
+#include "ft-mqtt.h"
 
 #include <getopt.h>
 #include <stdio.h>
@@ -60,23 +61,23 @@
 #include <filesystem>
 
 #include "config.h"
-#define Z_LAYER 0      // (0-15) 0=background
+#define Z_LAYER 0 // (0-15) 0=background
 
 // ------------------------------------------------------------------------------------------
 // Command Line Options
 
 // option vars
 const char *opt_hostname = NULL;
-int opt_layer  = Z_LAYER;
-double opt_timeout = 0;  // timeout now
-int opt_width  = DISPLAY_WIDTH;
+int opt_layer = Z_LAYER;
+double opt_timeout = 0; // timeout now
+int opt_width = DISPLAY_WIDTH;
 int opt_height = DISPLAY_HEIGHT;
-int opt_xoff=0, opt_yoff=0;
+int opt_xoff = 0, opt_yoff = 0;
 bool opt_black = false;
 bool opt_all = false;
 bool opt_fill = false;
-int opt_r=0, opt_g=0, opt_b=0;
-bool opt_debug = false; // debug flag
+int opt_r = 0, opt_g = 0, opt_b = 0;
+bool opt_debug = false;           // debug flag
 std::string opt_commandline = ""; // command line arguments for logging
 
 // fade function vars
@@ -84,13 +85,13 @@ struct timespec ts_fadestart;
 struct timespec ts_fadeend;
 struct timespec ts_currenttime;
 struct timespec ts_elapsed;
-double opt_fadein=0, opt_fadeout=0; //default fade 0s
-double new_r=0, new_g=0, new_b=0; // rgb values during fade
+double opt_fadein = 0, opt_fadeout = 0; // default fade 0s
+double new_r = 0, new_g = 0, new_b = 0; // rgb values during fade
 double fadeprogress;
 double elapsedtime;
 
 // Retrieve current working directory and set log file path
-std::string logName = "ft-black.log";   
+std::string logName = "ft-black.log";
 std::filesystem::path cwd = std::filesystem::current_path();
 std::filesystem::path logDir = cwd / "logs";
 std::filesystem::path logPath = logDir / logName;
@@ -98,74 +99,83 @@ std::filesystem::path logPath = logDir / logName;
 // create logger instance
 Logger logger(logName);
 
-int usage(const char *progname) {
+int usage(const char *progname)
+{
 
     fprintf(stderr, "Black (c) 2016 Carl Gorringe (carl.gorringe.org)\n");
     fprintf(stderr, "Modified Version (c) 2025-2026 James Crowley (judgejc.net)\n");
     fprintf(stderr, "Usage: %s [options] [all]\n", progname);
     fprintf(stderr, "Options:\n"
-        "\t-g <W>x<H>[+<X>+<Y>] : Output geometry. (default 64x64+0+0)\n"
-        "\t-l <layer>     : Layer 0-15. (default 0)\n"
-        "\t-t <timeout>   : Timeout exits after given seconds. (default 0s)\n"
-        "\t-h <host>      : Flaschen-Taschen display hostname. (FT_DISPLAY)\n"
-        "\t-b             : Black out with color (1,1,1)\n"
-        "\t-c <RRGGBB>    : Fill with color as hex\n"
-        "\t-I <fadein>    : Fade in over given seconds. (default 0s)\n"
-        "\t-O <fadeout>   : Fade out over given seconds. (default 0s)\n"
-        "\t all           : Clear ALL layers\n"
-        "\t debug         : Enable DEBUG log level. (default level INFO)\n"
-    );
+                    "\t-g <W>x<H>[+<X>+<Y>] : Output geometry. (default 64x64+0+0)\n"
+                    "\t-l <layer>     : Layer 0-15. (default 0)\n"
+                    "\t-t <timeout>   : Timeout exits after given seconds. (default 0s)\n"
+                    "\t-h <host>      : Flaschen-Taschen display hostname. (FT_DISPLAY)\n"
+                    "\t-b             : Black out with color (1,1,1)\n"
+                    "\t-c <RRGGBB>    : Fill with color as hex\n"
+                    "\t-I <fadein>    : Fade in over given seconds. (default 0s)\n"
+                    "\t-O <fadeout>   : Fade out over given seconds. (default 0s)\n"
+                    "\t all           : Clear ALL layers\n"
+                    "\t debug         : Enable DEBUG log level. (default level INFO)\n");
     return 1;
 }
 
-int cmdLine(int argc, char *argv[]) {
+int cmdLine(int argc, char *argv[])
+{
 
     // command line options
     int opt;
-    while ((opt = getopt(argc, argv, "?l:t:g:h:bc:I:O:")) != -1) {
-        switch (opt) {
-        case '?':  // help
+    while ((opt = getopt(argc, argv, "?l:t:g:h:bc:I:O:")) != -1)
+    {
+        switch (opt)
+        {
+        case '?': // help
             return usage(argv[0]);
             break;
-        case 'g':  // geometry
-            if (sscanf(optarg, "%dx%d%d%d", &opt_width, &opt_height, &opt_xoff, &opt_yoff) < 2) {
+        case 'g': // geometry
+            if (sscanf(optarg, "%dx%d%d%d", &opt_width, &opt_height, &opt_xoff, &opt_yoff) < 2)
+            {
                 logger.log(ERROR, "Invalid geometry '" + std::string(optarg) + "'");
                 return usage(argv[0]);
             }
             break;
-        case 'l':  // layer
-            if (sscanf(optarg, "%d", &opt_layer) != 1 || opt_layer < 0 || opt_layer >= 16) {
+        case 'l': // layer
+            if (sscanf(optarg, "%d", &opt_layer) != 1 || opt_layer < 0 || opt_layer >= 16)
+            {
                 logger.log(ERROR, "Invalid layer '" + std::string(optarg) + "'");
                 return usage(argv[0]);
             }
             break;
-        case 't':  // timeout
-            if (sscanf(optarg, "%lf", &opt_timeout) != 1 || opt_timeout < 0) {
+        case 't': // timeout
+            if (sscanf(optarg, "%lf", &opt_timeout) != 1 || opt_timeout < 0)
+            {
                 logger.log(ERROR, "Invalid timeout '" + std::string(optarg) + "'");
                 return usage(argv[0]);
             }
             break;
-        case 'h':  // hostname
+        case 'h':                          // hostname
             opt_hostname = strdup(optarg); // leaking. Ignore.
             break;
-        case 'b':  // black out
+        case 'b': // black out
             opt_black = true;
             break;
         case 'c':
-            if (sscanf(optarg, "%02x%02x%02x", &opt_r, &opt_g, &opt_b) != 3) {
+            if (sscanf(optarg, "%02x%02x%02x", &opt_r, &opt_g, &opt_b) != 3)
+            {
                 logger.log(ERROR, "Color parse error for '" + std::string(optarg) + "'");
                 return usage(argv[0]);
             }
             opt_fill = true;
             break;
-        case 'I':  // fade in
-            if (sscanf(optarg, "%lf", &opt_fadein) != 1 || opt_fadein < 0.0f) {
+        case 'I': // fade in
+            if (sscanf(optarg, "%lf", &opt_fadein) != 1 || opt_fadein < 0.0f)
+            {
                 logger.log(ERROR, "Invalid fade in '" + std::string(optarg) + "'");
                 return usage(argv[0]);
             }
             break;
-        case 'O':  // fade out
-            if (sscanf(optarg, "%lf", &opt_fadeout) != 1 || opt_fadeout < 0.0f) {
+        case 'O': // fade out
+            if (sscanf(optarg, "%lf", &opt_fadeout) != 1 || opt_fadeout < 0.0f)
+            {
                 logger.log(ERROR, "Invalid fade out '" + std::string(optarg) + "'");
                 return usage(argv[0]);
             }
@@ -177,12 +187,14 @@ int cmdLine(int argc, char *argv[]) {
 
     // retrieve arg text for all layers flag
     const char *text = argv[optind];
-    if (text && strncmp(text, "all", 3) == 0) {
+    if (text && strncmp(text, "all", 3) == 0)
+    {
         opt_all = true;
     }
 
     // retrieve arg text for debug logging flag
-    if (text && strncmp(text, "debug", 5) == 0) {
+    if (text && strncmp(text, "debug", 5) == 0)
+    {
         opt_debug = true;
     }
 
@@ -192,20 +204,22 @@ int cmdLine(int argc, char *argv[]) {
 // ------------------------------------------------------------------------------------------
 
 // Calculates difference between two timespecs for fade timing
-struct timespec timespec_diff(struct timespec currenttime, struct timespec starttime) {
-    
+struct timespec timespec_diff(struct timespec currenttime, struct timespec starttime)
+{
+
     // Declare time constants
     constexpr long max_msec = 1000;
-    constexpr long max_usec = 1000*max_msec;
-    constexpr long max_nsec = 1000*max_usec;
-    
+    constexpr long max_usec = 1000 * max_msec;
+    constexpr long max_nsec = 1000 * max_usec;
+
     // Calculate timespec difference
-    struct timespec result;    
-    result.tv_sec  = currenttime.tv_sec  - starttime.tv_sec;
+    struct timespec result;
+    result.tv_sec = currenttime.tv_sec - starttime.tv_sec;
     result.tv_nsec = currenttime.tv_nsec - starttime.tv_nsec;
 
     // Fix negative nanoseconds result
-    if (result.tv_nsec < 0) {
+    if (result.tv_nsec < 0)
+    {
         --result.tv_sec;
         result.tv_nsec += max_nsec;
     }
@@ -213,86 +227,117 @@ struct timespec timespec_diff(struct timespec currenttime, struct timespec start
 }
 
 // Enum to represent fade status
-enum FadeStatus { START, FADEIN, FADEOUT, END };
+enum FadeStatus
+{
+    START,
+    FADEIN,
+    FADEOUT,
+    END
+};
 
-void updateFadeProgress(FadeStatus status, UDPFlaschenTaschen canvas, int layer) {
+void updateFadeProgress(FadeStatus status, UDPFlaschenTaschen canvas, int layer)
+{
 
     // Get current fade status
-    switch (status) {
-        case START:
-            // get fade start time
-            clock_gettime(CLOCK_MONOTONIC, &ts_fadestart);
-            if (opt_debug) {
-                // debug output for fade start
-                logger.log(DEBUG, "Fade started at: " + 
-                std::to_string((long long)ts_fadestart.tv_sec) + "." + 
-                std::to_string(ts_fadestart.tv_nsec));
-            }
-            break;
-        case FADEIN:
-        case FADEOUT:                    
-            // calculate fade progress based on elapsed time           
-            clock_gettime(CLOCK_MONOTONIC, &ts_currenttime);
-            ts_elapsed = timespec_diff(ts_currenttime, ts_fadestart);            
-            elapsedtime = ((double)(ts_elapsed.tv_sec) + ((double)(ts_elapsed.tv_nsec) / 1000000000));        
+    switch (status)
+    {
+    case START:
+        // get fade start time
+        clock_gettime(CLOCK_MONOTONIC, &ts_fadestart);
+        if (opt_debug)
+        {
+            // debug output for fade start
+            logger.log(DEBUG, "Fade started at: " +
+                                  std::to_string((long long)ts_fadestart.tv_sec) + "." +
+                                  std::to_string(ts_fadestart.tv_nsec));
+        }
+        break;
+    case FADEIN:
+    case FADEOUT:
+        // calculate fade progress based on elapsed time
+        clock_gettime(CLOCK_MONOTONIC, &ts_currenttime);
+        ts_elapsed = timespec_diff(ts_currenttime, ts_fadestart);
+        elapsedtime = ((double)(ts_elapsed.tv_sec) + ((double)(ts_elapsed.tv_nsec) / 1000000000));
 
-            if (status == FADEIN) {
-                // calculate fade progress for fade in
-                fadeprogress = elapsedtime / opt_fadein;
+        if (status == FADEIN)
+        {
+            // calculate fade progress for fade in
+            fadeprogress = elapsedtime / opt_fadein;
 
-                // calculate new rgb values based on fade progress
-                new_r = opt_r * fadeprogress;
-                new_g = opt_g * fadeprogress;
-                new_b = opt_b * fadeprogress;
+            // calculate new rgb values based on fade progress
+            new_r = opt_r * fadeprogress;
+            new_g = opt_g * fadeprogress;
+            new_b = opt_b * fadeprogress;
 
-                // limit RGB max value to 255
-                if (new_r > 255) { new_r = 255; };
-                if (new_g > 255) { new_g = 255; };
-                if (new_b > 255) { new_b = 255; };
-            }
-            else if (status == FADEOUT) {
-                // calculate fade progress for fade out
-                fadeprogress = elapsedtime / opt_fadeout;
+            // limit RGB max value to 255
+            if (new_r > 255)
+            {
+                new_r = 255;
+            };
+            if (new_g > 255)
+            {
+                new_g = 255;
+            };
+            if (new_b > 255)
+            {
+                new_b = 255;
+            };
+        }
+        else if (status == FADEOUT)
+        {
+            // calculate fade progress for fade out
+            fadeprogress = elapsedtime / opt_fadeout;
 
-                // calculate new rgb values based on fade progress
-                new_r = opt_r * (1.0 - fadeprogress);
-                new_g = opt_g * (1.0 - fadeprogress);
-                new_b = opt_b * (1.0 - fadeprogress);
+            // calculate new rgb values based on fade progress
+            new_r = opt_r * (1.0 - fadeprogress);
+            new_g = opt_g * (1.0 - fadeprogress);
+            new_b = opt_b * (1.0 - fadeprogress);
 
-                // limit RGB min value to 0
-                if (new_r < 0) { new_r = 0; };
-                if (new_g < 0) { new_g = 0; };
-                if (new_b < 0) { new_b = 0; };
-            }
+            // limit RGB min value to 0
+            if (new_r < 0)
+            {
+                new_r = 0;
+            };
+            if (new_g < 0)
+            {
+                new_g = 0;
+            };
+            if (new_b < 0)
+            {
+                new_b = 0;
+            };
+        }
 
-            if (opt_debug) {
-                // debug output for fade progress
-                logger.log(DEBUG, "Fade progress: " + 
-                    std::to_string(fadeprogress * 100) + "%, " +
-                    "Current time: " + 
-                    std::to_string((long long)ts_currenttime.tv_sec) + "." + 
-                    std::to_string(ts_currenttime.tv_nsec) + ", " +
-                    "Elapsed time: " + 
-                    std::to_string(elapsedtime) + "s, " +
-                    "Original RGB: [" + std::to_string(opt_r) + ", " + 
-                                 std::to_string(opt_g) + ", " + 
-                                 std::to_string(opt_b) + "], " +
-                    "Modified RGB: [" + std::to_string((int)new_r) + ", " + 
-                                 std::to_string((int)new_g) + ", " + 
-                                 std::to_string((int)new_b) + "]");
-            }
-            break;
-        case END:
-            // get fade end time
-            clock_gettime(CLOCK_MONOTONIC, &ts_fadeend);
-            
-            if (opt_debug) {
-                // debug output for fade end
-                logger.log(DEBUG, "Fade ended at: " + 
-                std::to_string((long long)ts_fadeend.tv_sec) + "." + 
-                std::to_string(ts_fadeend.tv_nsec));
-            }
-            break;
+        if (opt_debug)
+        {
+            // debug output for fade progress
+            logger.log(DEBUG, "Fade progress: " +
+                                  std::to_string(fadeprogress * 100) + "%, " +
+                                  "Current time: " +
+                                  std::to_string((long long)ts_currenttime.tv_sec) + "." +
+                                  std::to_string(ts_currenttime.tv_nsec) + ", " +
+                                  "Elapsed time: " +
+                                  std::to_string(elapsedtime) + "s, " +
+                                  "Original RGB: [" + std::to_string(opt_r) + ", " +
+                                  std::to_string(opt_g) + ", " +
+                                  std::to_string(opt_b) + "], " +
+                                  "Modified RGB: [" + std::to_string((int)new_r) + ", " +
+                                  std::to_string((int)new_g) + ", " +
+                                  std::to_string((int)new_b) + "]");
+        }
+        break;
+    case END:
+        // get fade end time
+        clock_gettime(CLOCK_MONOTONIC, &ts_fadeend);
+
+        if (opt_debug)
+        {
+            // debug output for fade end
+            logger.log(DEBUG, "Fade ended at: " +
+                                  std::to_string((long long)ts_fadeend.tv_sec) + "." +
+                                  std::to_string(ts_fadeend.tv_nsec));
+        }
+        break;
     }
 
     // fill canvas with new rgb values
@@ -304,16 +349,18 @@ void updateFadeProgress(FadeStatus status, UDPFlaschenTaschen canvas, int layer)
     usleep(50000);
 }
 
-void argsToString() {
+void argsToString()
+{
 
     // Construct command line argument string for debugging
     opt_commandline += (opt_hostname ? std::string("-h ") + opt_hostname + " " : "");
-    opt_commandline += "-g " + std::to_string(opt_width) + "x" + std::to_string(opt_height) + 
-               "+" + std::to_string(opt_xoff) + "+" + std::to_string(opt_yoff) + " ";
+    opt_commandline += "-g " + std::to_string(opt_width) + "x" + std::to_string(opt_height) +
+                       "+" + std::to_string(opt_xoff) + "+" + std::to_string(opt_yoff) + " ";
     opt_commandline += "-l " + std::to_string(opt_layer) + " ";
     opt_commandline += "-t " + std::to_string(opt_timeout) + " ";
     opt_commandline += (opt_black ? "-b " : "");
-    if (opt_fill) {
+    if (opt_fill)
+    {
         char colorstr[8];
         snprintf(colorstr, sizeof(colorstr), "%02x%02x%02x", opt_r, opt_g, opt_b);
         opt_commandline += std::string("-c ") + colorstr + " ";
@@ -324,25 +371,31 @@ void argsToString() {
     opt_commandline += (opt_debug ? "debug " : "");
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
 
-    if (opt_debug) {
+    if (opt_debug)
+    {
         // Debug output for log file path
         logger.log(DEBUG, "Log file name: " + logName);
         logger.log(DEBUG, "Current working directory: " + cwd.string());
         logger.log(DEBUG, "Log file path: " + logPath.string());
     }
-    
+
     // log start of demo
     logger.log(INFO, "Starting ft-black demo");
 
     // parse command line
-    if (int e = cmdLine(argc, argv)) { return e; }
+    if (int e = cmdLine(argc, argv))
+    {
+        return e;
+    }
 
     // concatenate command line arguments for logging
     argsToString();
-   
-    if (opt_debug) {
+
+    if (opt_debug)
+    {
         // Debug output for command line arguments
         logger.log(DEBUG, "Command line arguments: " + opt_commandline);
     }
@@ -350,137 +403,163 @@ int main(int argc, char *argv[]) {
     // Open socket and create our canvas.
     const int socket = OpenFlaschenTaschenSocket(opt_hostname);
     UDPFlaschenTaschen canvas(socket, opt_width, opt_height);
-    
-    if (opt_debug) {
+
+    if (opt_debug)
+    {
         // Debug output for canvas creation details
-        logger.log(DEBUG, "Created new UDPFlaschenTaschen canvas: " + 
-        std::to_string(opt_width) + "x" + std::to_string(opt_height) +
-        " on host " + (opt_hostname ? std::string(opt_hostname) : "default"));
+        logger.log(DEBUG, "Created new UDPFlaschenTaschen canvas: " +
+                              std::to_string(opt_width) + "x" + std::to_string(opt_height) +
+                              " on host " + (opt_hostname ? std::string(opt_hostname) : "default"));
     }
 
     // color, black, or clear
-    if (opt_fill) {
+    if (opt_fill)
+    {
         canvas.Fill(Color(opt_r, opt_g, opt_b));
-        if (opt_all) {
+        if (opt_all)
+        {
             logger.log(INFO, "Filling all layers with color RGB(" + std::to_string(opt_r) + "," +
-                std::to_string(opt_g) + "," + std::to_string(opt_b) + ")"
-            );
+                                 std::to_string(opt_g) + "," + std::to_string(opt_b) + ")");
         }
-        else {
+        else
+        {
             logger.log(INFO, "Filling layer " + std::to_string(opt_layer) + " with color RGB(" +
-                std::to_string(opt_r) + "," +
-                std::to_string(opt_g) + "," +
-                std::to_string(opt_b) + ")"
-            );
+                                 std::to_string(opt_r) + "," +
+                                 std::to_string(opt_g) + "," +
+                                 std::to_string(opt_b) + ")");
         }
     }
-    else if (opt_black) {
+    else if (opt_black)
+    {
         canvas.Fill(Color(1, 1, 1));
-        if (opt_all) {
+        if (opt_all)
+        {
             logger.log(INFO, "Filling all layers with black RGB(1,1,1)");
         }
-        else {
+        else
+        {
             logger.log(INFO, "Filling layer " + std::to_string(opt_layer) + " with black RGB(1,1,1)");
         }
     }
-    else {
+    else
+    {
         canvas.Clear();
-        if (opt_all) {
+        if (opt_all)
+        {
             logger.log(INFO, "Clearing all layers");
         }
-        else {
+        else
+        {
             logger.log(INFO, "Clearing layer " + std::to_string(opt_layer));
         }
     }
 
-    if (opt_timeout == 0) {
+    if (opt_timeout == 0)
+    {
         logger.log(INFO, "No timeout specified, exiting immediately after clear");
     }
-    else {
+    else
+    {
         logger.log(INFO, "Timeout set to " + std::to_string(opt_timeout) + " seconds");
     }
 
-    if (opt_fadein > 0) {
+    if (opt_fadein > 0)
+    {
         logger.log(INFO, "Applying fade in over " + std::to_string(opt_fadein) + " seconds");
     }
 
-    if (opt_fadeout > 0) {
+    if (opt_fadeout > 0)
+    {
         logger.log(INFO, "Applying fade out over " + std::to_string(opt_fadeout) + " seconds");
     }
 
     time_t starttime = time(NULL);
-    do {
-        if (opt_all) {
+    do
+    {
+        if (opt_all)
+        {
             // clear ALL layers
-            for (int i=0; i <= 15; i++) {
+            for (int i = 0; i <= 15; i++)
+            {
                 // handle fade in if specified
-                if (opt_fadein > 0 && difftime(time(NULL), starttime) <= opt_fadein) {
-                  
-                  // fade in start
-                  updateFadeProgress(START, canvas, i);
-                  
-                  do {
-                    // calculate new rgb values based on fade progress
-                    updateFadeProgress(FADEIN, canvas, i);
-                  } while ( elapsedtime < opt_fadein );
-                  
-                  // fade in end
-                  updateFadeProgress(END, canvas, i);
+                if (opt_fadein > 0 && difftime(time(NULL), starttime) <= opt_fadein)
+                {
+
+                    // fade in start
+                    updateFadeProgress(START, canvas, i);
+
+                    do
+                    {
+                        // calculate new rgb values based on fade progress
+                        updateFadeProgress(FADEIN, canvas, i);
+                    } while (elapsedtime < opt_fadein);
+
+                    // fade in end
+                    updateFadeProgress(END, canvas, i);
                 }
-                else {
+                else
+                {
                     // no fade in, just clear the layer
                     canvas.SetOffset(opt_xoff + DISPLAY_XOFF, opt_yoff + DISPLAY_YOFF, i);
                     canvas.Send();
                 }
-                
+
                 // handle fade out if specified
-                if (opt_fadeout > 0 && difftime(time(NULL), starttime) + opt_fadeout >= opt_timeout) {
-                        
+                if (opt_fadeout > 0 && difftime(time(NULL), starttime) + opt_fadeout >= opt_timeout)
+                {
+
                     // fade out start
                     updateFadeProgress(START, canvas, i);
-                        
-                    do {
+
+                    do
+                    {
                         // calculate new rgb values based on fade progress
                         updateFadeProgress(FADEOUT, canvas, i);
-                    } while ( elapsedtime < opt_fadeout );
-                        
+                    } while (elapsedtime < opt_fadeout);
+
                     // fade out end
                     updateFadeProgress(END, canvas, i);
                 }
             }
         }
-        else {
+        else
+        {
             // handle fade in if specified
-            if (opt_fadein > 0 && difftime(time(NULL), starttime) <= opt_fadein) {
-              
-              // fade in start
-              updateFadeProgress(START, canvas, opt_layer);
-              
-              do {
-                // calculate new rgb values based on fade progress
-                updateFadeProgress(FADEIN, canvas, opt_layer);
-              } while ( elapsedtime < opt_fadein );
-              
-              // fade in end
-              updateFadeProgress(END, canvas, opt_layer);
+            if (opt_fadein > 0 && difftime(time(NULL), starttime) <= opt_fadein)
+            {
+
+                // fade in start
+                updateFadeProgress(START, canvas, opt_layer);
+
+                do
+                {
+                    // calculate new rgb values based on fade progress
+                    updateFadeProgress(FADEIN, canvas, opt_layer);
+                } while (elapsedtime < opt_fadein);
+
+                // fade in end
+                updateFadeProgress(END, canvas, opt_layer);
             }
-            else {
+            else
+            {
                 // no fade in, just clear the layer
                 canvas.SetOffset(opt_xoff + DISPLAY_XOFF, opt_yoff + DISPLAY_YOFF, opt_layer);
                 canvas.Send();
             }
 
             // handle fade out if specified
-            if (opt_fadeout > 0 && difftime(time(NULL), starttime) + opt_fadeout >= opt_timeout) {
-                
+            if (opt_fadeout > 0 && difftime(time(NULL), starttime) + opt_fadeout >= opt_timeout)
+            {
+
                 // fade out start
                 updateFadeProgress(START, canvas, opt_layer);
-                
-                do {
+
+                do
+                {
                     // calculate new rgb values based on fade progress
                     updateFadeProgress(FADEOUT, canvas, opt_layer);
-                } while ( elapsedtime < opt_fadeout );
-                
+                } while (elapsedtime < opt_fadeout);
+
                 // fade out end
                 updateFadeProgress(END, canvas, opt_layer);
             }
@@ -488,14 +567,14 @@ int main(int argc, char *argv[]) {
 
         sleep(1);
 
-    } while ( difftime(time(NULL), starttime) <= opt_timeout );
+    } while (difftime(time(NULL), starttime) <= opt_timeout);
 
     // log end of demo
     logger.log(INFO, "Exiting ft-black demo");
 
     // clear canvas on exit
-    //canvas.Clear();
-    //canvas.Send();
+    // canvas.Clear();
+    // canvas.Send();
 
     return 0;
 }
